@@ -55,6 +55,7 @@ public class Window extends JFrame {
     private JTextArea buildTextArea() {
         JTextArea textArea = new JTextArea();
         textArea.setPreferredSize(new Dimension(800, 250));
+        textArea.setEditable(false);
         styleComponent(textArea);
         return textArea;
     }

@@ -55,17 +55,15 @@ public class SYSTEM_POWER_STATUS extends Structure {
     }
 
     public String getBatteryLifeTimeString() {
-        return (BatteryLifeTime == -1) ? "Unknown" : Integer.toString(BatteryLifeTime);
+        return (BatteryLifeTime == -1) ? "Unknown" : BatteryLifeTime / 3600 + " h " + ((BatteryLifeTime / 60) % 60) + " min " + BatteryLifeTime % 60 + " sec";
     }
 
     @Override
     public String toString() {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("Battery working mode: ").append(getACLineStatusString()).append("\n")
-                .append("Battery flag: ").append(getBatteryFlagString()).append("\n")
-                .append("Battery left(%): ").append(getBatteryLifePercentString()).append("\n")
-                .append("Battery saver mode: ").append(getSystemStatusFlagString()).append("\n")
-                .append("Battery left(seconds): ").append(getBatteryLifeTimeString()).append("\n");
-        return stringBuilder.toString();
+        return "Battery working mode: " + getACLineStatusString() + "\n" +
+                "Battery flag: " + getBatteryFlagString() + "\n" +
+                "Battery left(%): " + getBatteryLifePercentString() + "\n" +
+                "Battery saver mode: " + getSystemStatusFlagString() + "\n" +
+                "Battery left: " + getBatteryLifeTimeString() + "\n";
     }
 }
