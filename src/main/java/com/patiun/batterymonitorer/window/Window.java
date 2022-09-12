@@ -1,31 +1,27 @@
 package com.patiun.batterymonitorer.window;
 
-import com.patiun.batterymonitorer.clibs.Kernel32;
-import com.patiun.batterymonitorer.clibs.PowrProf;
+import com.patiun.batterymonitorer.actionlistener.SetSuspendStateActionListener;
 import com.patiun.batterymonitorer.service.Service;
-import com.patiun.batterymonitorer.structure.SYSTEM_POWER_STATUS;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.awt.event.ActionListener;
 
 public class Window extends JFrame {
 
-    public static Color BACKGROUND_COLOR = Color.BLACK;
-    public static Color MAIN_COLOR = Color.GREEN;
+    private static final Color BACKGROUND_COLOR = Color.BLACK;
+    private static final Color MAIN_COLOR = Color.GREEN;
+    private static final Font FONT = new Font("Consolas", Font.BOLD, 20);
 
-    public static final int IOCTL_BATTERY_QUERY_TAG = 0x294040;
-    public static final int IOCTL_BATTERY_QUERY_INFORMATION = 0x294044;
+    private final Service service;
 
-    private int timer = 0;
-    private JLabel timerLabel = new JLabel();
-    private static final String TIMER_MESSAGE = "Time since last plugged in (sec): ";
+    private final JLabel timerLabel = buildLabel("Timer");
+    private static final String TIMER_MESSAGE = "Time since last plugged in(seconds): ";
 
-    private JTextArea stats;
+    private final JTextArea stats = buildTextArea();
 
-    public Window() {
+    public Window(Service service) {
+        this.service = service;
     }
 
     public void setUpMyself() {
@@ -37,23 +33,45 @@ public class Window extends JFrame {
         this.setUndecorated(false);
     }
 
-    public JPanel setUpStatsPanel() {
-        JPanel statsPanel = new JPanel();
+    private void styleComponent(JComponent component) {
+        component.setOpaque(true);
+        component.setBackground(BACKGROUND_COLOR);
+        component.setFont(FONT);
+        component.setForeground(MAIN_COLOR);
+    }
+
+    private JPanel buildPanel() {
+        JPanel panel = new JPanel();
+        styleComponent(panel);
+        return panel;
+    }
+
+    private JLabel buildLabel(String text) {
+        JLabel label = new JLabel(text);
+        styleComponent(label);
+        return label;
+    }
+
+    private JTextArea buildTextArea() {
+        JTextArea textArea = new JTextArea();
+        textArea.setPreferredSize(new Dimension(800, 250));
+        styleComponent(textArea);
+        return textArea;
+    }
+
+    private JButton buildButton(String name, ActionListener actionListener) {
+        JButton button = new JButton(name);
+        button.addActionListener(actionListener);
+        button.setPreferredSize(new Dimension(200, 75));
+        styleComponent(button);
+        return button;
+    }
+
+    private JPanel setUpStatsPanel() {
+        JPanel statsPanel = buildPanel();
         statsPanel.setLayout(new BoxLayout(statsPanel, BoxLayout.Y_AXIS));
-        statsPanel.setBackground(BACKGROUND_COLOR);
 
-        JLabel statsLabel = new JLabel("Battery stats");
-        statsLabel.setHorizontalTextPosition(SwingConstants.CENTER);
-        statsLabel.setOpaque(true);
-        statsLabel.setBackground(BACKGROUND_COLOR);
-        statsLabel.setFont(new Font("Consolas", Font.BOLD, 20));
-        statsLabel.setForeground(MAIN_COLOR);
-
-        stats = new JTextArea();
-        stats.setPreferredSize(new Dimension(800, 250));
-        stats.setBackground(BACKGROUND_COLOR);
-        stats.setFont(new Font("Consolas", Font.BOLD, 20));
-        stats.setForeground(MAIN_COLOR);
+        JLabel statsLabel = buildLabel("Battery stats");
 
         statsPanel.add(statsLabel);
         statsPanel.add(stats);
@@ -61,23 +79,13 @@ public class Window extends JFrame {
         return statsPanel;
     }
 
-    public JPanel setUpInfoPanel() {
-        JPanel infoPanel = new JPanel();
+    private JPanel setUpInfoPanel() {
+        JPanel infoPanel = buildPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
-        infoPanel.setBackground(BACKGROUND_COLOR);
 
-        JLabel infoLabel = new JLabel("Battery info");
-        infoLabel.setHorizontalTextPosition(SwingConstants.CENTER);
-        infoLabel.setOpaque(true);
-        infoLabel.setBackground(BACKGROUND_COLOR);
-        infoLabel.setFont(new Font("Consolas", Font.BOLD, 20));
-        infoLabel.setForeground(MAIN_COLOR);
+        JLabel infoLabel = buildLabel("Battery info");
 
-        JTextArea info = new JTextArea();
-        info.setPreferredSize(new Dimension(500, 250));
-        info.setBackground(BACKGROUND_COLOR);
-        info.setFont(new Font("Consolas", Font.BOLD, 20));
-        info.setForeground(MAIN_COLOR);
+        JTextArea info = buildTextArea();
 
         info.setText(new Service().getBatteryInformation().toString());
 
@@ -87,8 +95,8 @@ public class Window extends JFrame {
         return infoPanel;
     }
 
-    public JPanel setUpUpperPanel() {
-        JPanel upperPanel = new JPanel();
+    private JPanel setUpUpperPanel() {
+        JPanel upperPanel = buildPanel();
         upperPanel.setLayout(new GridLayout(1, 2));
 
         upperPanel.add(setUpStatsPanel());
@@ -97,73 +105,40 @@ public class Window extends JFrame {
         return upperPanel;
     }
 
-    public JPanel setUpTimer() {
-        JPanel timerPanel = new JPanel();
-        timerPanel.setLayout(new BoxLayout(timerPanel, BoxLayout.Y_AXIS));
-        timerPanel.setBackground(BACKGROUND_COLOR);
-
-        timerLabel.setHorizontalTextPosition(SwingConstants.CENTER);
-        timerLabel.setOpaque(true);
-        timerLabel.setBackground(BACKGROUND_COLOR);
-        timerLabel.setFont(new Font("Consolas", Font.BOLD, 20));
-        timerLabel.setForeground(MAIN_COLOR);
+    private JPanel setUpTimer() {
+        JPanel timerPanel = buildPanel();
+        timerPanel.setLayout(new BoxLayout(timerPanel, BoxLayout.X_AXIS));
         timerPanel.add(timerLabel);
 
         return timerPanel;
     }
 
-    public JPanel setUpButtonsPanel() {
+    private JPanel setUpButtonsPanel() {
         JPanel buttonsPanel = new JPanel();
         buttonsPanel.setLayout(new FlowLayout());
         buttonsPanel.setBackground(BACKGROUND_COLOR);
 
-        PowrProf powrprof = PowrProf.INSTANCE;
-
-        JButton suspendButton = new JButton("Suspend");
-        suspendButton.addActionListener(e -> powrprof.SetSuspendState(false, false, false));
-        suspendButton.setBackground(Color.GREEN);
-        suspendButton.setPreferredSize(new Dimension(200, 75));
-        suspendButton.setMaximumSize(new Dimension(200, 75));
+        JButton suspendButton = buildButton("Suspend", new SetSuspendStateActionListener(false));
         buttonsPanel.add(suspendButton);
 
-        JButton hibernateButton = new JButton("Hibernate");
-        hibernateButton.addActionListener(e -> powrprof.SetSuspendState(true, false, false));
-        hibernateButton.setBackground(Color.GREEN);
-        hibernateButton.setPreferredSize(new Dimension(200, 75));
-        hibernateButton.setMaximumSize(new Dimension(200, 75));
+        JButton hibernateButton = buildButton("Hibernate", new SetSuspendStateActionListener(true));
         buttonsPanel.add(hibernateButton);
 
         return buttonsPanel;
     }
 
-    public void launch() throws InterruptedException {
+    private void launch() {
         this.pack();
         this.setVisible(true);
 
-        Kernel32 kernel32 = Kernel32.INSTANCE;
-        SYSTEM_POWER_STATUS systemPowerStatus = new SYSTEM_POWER_STATUS();
-
-        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-        scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                kernel32.GetSystemPowerStatus(systemPowerStatus);
-                stats.setText(systemPowerStatus.toString());
-                if (systemPowerStatus.ACLineStatus == 0) {
-                    timer++;
-                } else {
-                    timer = 0;
-                }
-                timerLabel.setText(TIMER_MESSAGE + timer);
-            }
-        }, 0, 1, TimeUnit.SECONDS);
+        service.updateStatsAndTimer(stats, timerLabel, TIMER_MESSAGE);
     }
 
-    public void setUpAndLaunch() throws InterruptedException {
+    public void setUpAndLaunch() {
         setUpMyself();
-        this.add(setUpUpperPanel());
-        this.add(setUpTimer());
-        this.add(setUpButtonsPanel());
+        add(setUpUpperPanel());
+        add(setUpTimer());
+        add(setUpButtonsPanel());
         launch();
     }
 }

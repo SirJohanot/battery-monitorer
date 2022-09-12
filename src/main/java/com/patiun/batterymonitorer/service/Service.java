@@ -2,6 +2,7 @@ package com.patiun.batterymonitorer.service;
 
 import com.patiun.batterymonitorer.structure.BATTERY_INFORMATION;
 import com.patiun.batterymonitorer.structure.BATTERY_QUERY_INFORMATION;
+import com.patiun.batterymonitorer.structure.SYSTEM_POWER_STATUS;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.Guid.GUID;
@@ -10,18 +11,27 @@ import com.sun.jna.platform.win32.SetupApi;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.ptr.IntByReference;
 
-import static com.patiun.batterymonitorer.window.Window.IOCTL_BATTERY_QUERY_INFORMATION;
-import static com.patiun.batterymonitorer.window.Window.IOCTL_BATTERY_QUERY_TAG;
+import javax.swing.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import static com.sun.jna.platform.win32.SetupApi.DIGCF_DEVICEINTERFACE;
 import static com.sun.jna.platform.win32.SetupApi.DIGCF_PRESENT;
 import static com.sun.jna.platform.win32.WinNT.*;
 
 public class Service {
 
-    private final Kernel32 kernel32 = Kernel32.INSTANCE;
-    private final SetupApi setupApi = SetupApi.INSTANCE;
+    private static final int IOCTL_BATTERY_QUERY_TAG = 0x294040;
+    private static final int IOCTL_BATTERY_QUERY_INFORMATION = 0x294044;
 
     private static final GUID DEV_CLASS_BATTERY = new GUID("72631E54-78A4-11D0-BCF7-00AA00B7B32A");
+
+    private final Kernel32 kernel32 = Kernel32.INSTANCE;
+    private final com.patiun.batterymonitorer.clibs.Kernel32 customKernel32 = com.patiun.batterymonitorer.clibs.Kernel32.INSTANCE;
+    private final SetupApi setupApi = SetupApi.INSTANCE;
+
+    private int timer = 0;
 
     public BATTERY_INFORMATION getBatteryInformation() {
         WinNT.HANDLE handleDevice = setupApi.SetupDiGetClassDevs(DEV_CLASS_BATTERY, null, null, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
@@ -54,12 +64,24 @@ public class Service {
         BATTERY_INFORMATION batteryInformation = new BATTERY_INFORMATION();
         batteryQueryInformation.InformationLevel = 0;
         kernel32.DeviceIoControl(handleBattery, IOCTL_BATTERY_QUERY_INFORMATION, batteryQueryInformation.getPointer(), batteryQueryInformation.size(), batteryInformation.getPointer(), batteryInformation.size(), dwOut, null);
-        batteryInformation.Technology = 1;
-        batteryInformation.Chemistry = new byte[]{'L', 'i', 'P'};
-        batteryInformation.DesignedCapacity = new ULONG(45000);
-        batteryInformation.FullChargedCapacity = new ULONG(39290);
 
         return batteryInformation;
+    }
+
+    public void updateStatsAndTimer(JTextArea stats, JLabel timerLabel, String timerMessage) {
+        SYSTEM_POWER_STATUS systemPowerStatus = new SYSTEM_POWER_STATUS();
+
+        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        scheduledExecutorService.scheduleAtFixedRate(() -> {
+            customKernel32.GetSystemPowerStatus(systemPowerStatus);
+            stats.setText(systemPowerStatus.toString());
+            if (systemPowerStatus.ACLineStatus == 0) {
+                timer++;
+            } else {
+                timer = 0;
+            }
+            timerLabel.setText(timerMessage + timer);
+        }, 0, 1, TimeUnit.SECONDS);
     }
 
 }

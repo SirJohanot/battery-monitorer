@@ -53,12 +53,10 @@ public class BATTERY_INFORMATION extends Structure {
 
     @Override
     public String toString() {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("Battery technology: ").append(getTechnologyString()).append("\n")
-                .append("Battery chemistry: ").append(getChemistryString()).append("\n")
-                .append("Designed capacity (mWh): ").append(DesignedCapacity).append("\n")
-                .append("Full charged capacity (mWh): ").append(FullChargedCapacity).append("\n");
-        return stringBuilder.toString();
+        return "Battery technology: " + getTechnologyString() + "\n" +
+                "Battery chemistry: " + getChemistryString() + "\n" +
+                "Designed capacity(mWh): " + DesignedCapacity + "\n" +
+                "Full charged capacity(mWh): " + FullChargedCapacity + "\n";
     }
 
 }
